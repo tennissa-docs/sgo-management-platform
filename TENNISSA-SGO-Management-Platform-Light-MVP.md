@@ -1,6 +1,5 @@
 # TENNISSA Scholarship MVP — Recommendation and PRD
 
-Oct 30, 2026 · @Kyle Anderson
 
 ## Summary and recommendation
 
