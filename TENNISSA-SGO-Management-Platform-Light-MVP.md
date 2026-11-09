@@ -1,5 +1,6 @@
 # TENNISSA Scholarship MVP — Recommendation and PRD
 
+Oct 30, 2026 · @Kyle Anderson
 
 ## Summary and recommendation
 
@@ -390,6 +391,50 @@ Stripe tells the app when an ACH gift settles; the app issues the acknowledgment
 | CSV export | The same entries as a QuickBooks import file, as a backup if the API is unavailable | Launch |
 
 In QuickBooks, track the §25F scholarship fund and operating funds separately (classes or separate bank accounts) so the books match the app's 90/10 numbers. QuickBooks stays the system of record for the general ledger; the app is the system of record for donors, awards and disbursements.
+
+## Money sync and reconciliation
+
+Stripe, the app and QuickBooks each record the same money; the app listens to every Stripe event and posts one matching journal entry to QuickBooks, using a **Stripe clearing** account that always equals TENNISSA's Stripe balance. When the three agree, every dollar from a donor to a school can be traced in all three places.
+
+&#91;embedded content: money sync · Stripe to schools, app to QuickBooks\]
+
+Solid arrows are money; dashed arrows are data. The bank feed only confirms entries the app has already posted.
+
+### Journal entries by event
+
+Worked example: two $1,700 §25F gifts with a $5 Stripe fee each, then a $3,000 payment to Lincoln High. Every line is tagged with the §25F fund (QuickBooks class).
+
+| What happens | Stripe event | Journal entry the app posts | Stripe clearing after |
+| --- | --- | --- | --- |
+| Two ACH gifts settle | `payment_intent.succeeded` | Debit Stripe clearing $3,390 · Debit Stripe fees $10 · Credit Contributions §25F $3,400 | $3,390 |
+| Admin pays a school $3,000 | `transfer.created` | Debit Scholarships paid $3,000 · Credit Stripe clearing $3,000 | $390 |
+| Stripe pays the remainder to the §25F bank | `payout.paid` | Debit §25F bank $390 · Credit Stripe clearing $390 | $0 |
+| A settled gift is returned or disputed | `charge.refunded` or `charge.dispute.created` | Reverse the gift entry: Debit Contributions §25F · Credit Stripe clearing | — |
+| A school returns money for a withdrawn student | Recorded by an administrator | Debit §25F bank · Credit Scholarships paid | — |
+| Stripe payout to the bank fails | `payout.failed` | Reverse the payout entry | — |
+
+### Rules that keep the three in sync
+
+| ID | Rule |
+| --- | --- |
+| SYNC-1 | **Shared key.** Each journal entry carries its Stripe ID (payment, transfer or payout) in the QuickBooks memo; the app stores the QuickBooks entry ID beside the gift, disbursement or payout |
+| SYNC-2 | **Post once.** Webhooks are verified and processed once per Stripe event ID; an event already posted is ignored, so a repeated webhook never creates a second entry |
+| SYNC-3 | **Retry, don't lose.** If QuickBooks is unavailable, the entry stays Pending and is retried; the admin sees anything Failed for more than 24 hours |
+| SYNC-4 | **Hold money for schools.** Automatic daily Stripe payouts are turned off; TENNISSA's balance pays out on a schedule set by the administrator, after school transfers for that cycle are sent |
+| SYNC-5 | **Bank feed matches, never adds.** QuickBooks pulls the §25F and operating bank accounts; the bookkeeper matches each Stripe deposit to the payout entry the app already posted instead of creating a new transaction |
+| SYNC-6 | **Nightly three-way check.** The app compares its ledger, QuickBooks balances by account and fund, and Stripe's balance; any difference is emailed to the administrator with the entries involved |
+| SYNC-7 | **Fix by reversal.** Mistakes are corrected with reversing entries posted from the app, never by editing in QuickBooks, so the two never disagree |
+| SYNC-8 | **Fallback path.** If schools are paid from the §25F bank instead of Stripe Connect, the school payment posts as Debit Scholarships paid · Credit §25F bank, and the outgoing ACH is matched in the bank feed the same way |
+
+### Month-end close
+
+1. The nightly check shows no open differences for the month.
+2. The bookkeeper reconciles the §25F and operating bank accounts in QuickBooks against the bank statements.
+3. The bookkeeper reconciles the Stripe clearing account against Stripe's balance report for the last day of the month.
+4. An administrator signs off in the app's Books area, which records who closed the month and when.
+5. The app blocks back-dated entries for that month, and the bookkeeper sets the QuickBooks closing date.
+
+**Acceptance test.** Replay the worked example in Stripe test mode: QuickBooks shows Contributions §25F $3,400, Stripe fees $10, Scholarships paid $3,000 and §25F bank $390; Stripe clearing is $0; sending the `payment_intent.succeeded` webhook a second time changes nothing.
 
 ## Implementation phases and timeline
 
