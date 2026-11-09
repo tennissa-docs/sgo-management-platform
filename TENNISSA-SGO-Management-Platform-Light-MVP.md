@@ -4,23 +4,23 @@ Oct 30, 2026 · @Kyle Anderson
 
 ## Summary and recommendation
 
-Build the TENNISSA MVP as one web app on **Next.js (Vercel) + Supabase + Stripe ACH + Resend**, run by a small team for roughly **$45–$80 a month** plus Stripe's per-donation fees. Ship it in four phases so donor giving and acknowledgments are live by **January 1, 2027**, when §25F credit-eligible gifts begin, and the student, review, award and disbursement modules follow in time for the 2027–28 award cycle.
+Build the TENNISSA MVP as one web app on **Next.js (Vercel) + Supabase + Stripe ACH and Connect + Resend + QuickBooks Online**, run by a small team for roughly **$120–$155 a month** plus Stripe's per-gift and per-payout fees. Ship it in four phases so donor giving and acknowledgments are live by **January 1, 2027**, when §25F credit-eligible gifts begin, and the student, review, award and disbursement modules follow in time for the 2027–28 award cycle.
 
-**What this MVP is.** A secure, mobile-friendly app with four portals (student/parent, reviewer, donor, administrator) plus a read-only auditor view on one database. It replaces spreadsheets for TENNISSA's core workflow: apply → review → recommend → approve → disburse, with donor gifts, receipts and a financial dashboard alongside.
+**What this MVP is.** A secure, mobile-friendly app with five portals (student/parent, reviewer, donor, partner school, administrator) plus a read-only auditor view on one database. It replaces spreadsheets for TENNISSA's core workflow: apply → review → recommend → approve → disburse, with donor gifts, receipts and a financial dashboard alongside.
 
 **Key recommendations**
 
 1. **One managed platform, not many.** Supabase gives the database, login, role-based security, file storage and backups in one service; Vercel hosts the app with no servers to manage.
 2. **ACH only, through Stripe.** Stripe holds the bank details, verifies accounts and tells the app when a pending payment settles, so acknowledgments go out only for completed gifts.
-3. **Record disbursements, don't automate them yet.** Pay schools from TENNISSA's bank as today; the app records each payment, its reference and status, and tracks awarded vs. disbursed per student and school.
-4. **QuickBooks by export first.** Monthly CSV exports in QuickBooks import format in the MVP; a direct QuickBooks Online sync is a phase-two upgrade.
+3. **Let schools onboard themselves; pay them through Stripe Connect.** Schools register, sign the MOU through Dropbox Sign and connect a bank account that Stripe verifies; the app sends each disbursement as a Stripe transfer and tracks awarded vs. disbursed per student and school.
+4. **QuickBooks Online is the books.** The app posts every money event to QuickBooks as a balanced journal entry; bank reconciliation, financial statements and the outside CPA's login live there, and the app adds the 90% tracker and an examiner view.
 5. **Build in the §25F basics now.** A few compliance items (designation, donor numbers, the 300% income test, priority rules, the 90/10 split, January 31 acknowledgments) cost little to include now and a lot to retrofit. They are listed in the next section.
 
-**What it is not.** Not the full SGO Management Platform PRD: no multi-tenant SaaS, automated payouts, IRS transcript integration, digital wallets or SOC 2 audit of TENNISSA itself. The data model is designed so those can be added later without a rebuild.
+**What it is not.** Not the full SGO Management Platform PRD: no multi-tenant SaaS, IRS transcript integration, digital wallets or SOC 2 audit of TENNISSA itself. The data model is designed so those can be added later without a rebuild.
 
 ## MVP scope and §25F minimums
 
-The MVP covers the seven priorities in TENNISSA's request and nothing else, plus eight §25F items that the program requires from the first gift.
+The MVP covers the seven priorities in TENNISSA's request plus partner school registration and books, plus eight §25F items that the program requires from the first gift.
 
 **In scope (v1)**
 
@@ -31,14 +31,13 @@ The MVP covers the seven priorities in TENNISSA's request and nothing else, plus
 5. Donor registration and Stripe ACH donations
 6. Automated donation acknowledgments (PDF + email)
 7. Administrative dashboard and financial reporting
+8. Partner school registration, MOU, verified bank account, students by school year and payments received
+9. Books: double-entry ledger, bank reconciliation, reports, 90% ratio and examiner view
 
 **Out of scope (later phases)**
 
-- Automated payouts to schools (payments are made from the bank and recorded in the app)
 - Card payments, recurring gifts, donor CRM campaigns
-- Direct QuickBooks Online sync (CSV export in v1)
 - IRS transcript and payroll income verification (documents reviewed by staff in v1)
-- School self-service portal (TENNISSA staff maintain the school list in v1)
 - Multi-organization (SaaS) features
 
 **§25F minimums the MVP must include**
@@ -58,15 +57,16 @@ These come from IRC §25F and Treasury's [proposed regulations](https://www.fede
 
 ## Users, roles and access
 
-Five roles, each seeing only its own data; every rule is enforced in the database (row-level security), not just hidden in the screens.
+Six roles, each seeing only its own data; every rule is enforced in the database (row-level security), not just hidden in the screens.
 
 | Role | Who | Can do | Can see |
 | --- | --- | --- | --- |
 | Applicant | Student or parent/guardian | Create account, apply, upload documents, answer info requests, view decision | Own household's applications, documents, award and balance |
 | Reviewer | TENNISSA staff or volunteer | Review assigned applications, comment, score, recommend an award amount, submit | Only applications assigned to them, with their documents |
 | Donor | Individual taxpayer | Manage profile, give by ACH, download receipts and year-end acknowledgments | Own profile, donor number, gifts and receipts |
-| Administrator | Executive director, finance lead | Assign reviewers, approve/modify/reject awards, record disbursements and expenses, manage schools and users, run reports and exports | Everything |
-| Auditor | Independent CPA, board audit committee member, or state reviewer | View records, run reports, export CSVs and evidence files, leave notes for administrators; no create, edit, approve or delete anywhere | Read-only: donations, acknowledgments, applications, reviews, awards, disbursements, schools, expenses, dashboard, audit log; documents only when the admin turns on document access for that auditor |
+| Administrator | Executive director, finance lead | Assign reviewers, approve/modify/reject awards, record disbursements and expenses, approve partner schools, confirm school bank changes, close periods, manage users, run reports and exports | Everything |
+| School administrator | Head of school or business office at a partner school | Register the school, sign the MOU, connect a bank account through Stripe, enter tuition, verify enrollment, report withdrawals, invite one more school user | Own school's profile, applicants who named the school (name and grade only), awarded students by school year, payments received; never household income or documents |
+| Auditor | Independent CPA, board audit committee member, or state reviewer | View records, run reports, export CSVs and evidence files, leave notes for administrators; no create, edit, approve or delete anywhere | Read-only: donations, acknowledgments, applications, reviews, awards, disbursements, schools and their MOUs, expenses, books (journal, trial balance, reconciliations, 90% workpaper), dashboard, audit log; documents only when the admin turns on document access for that auditor |
 
 **Access rules**
 
@@ -79,7 +79,7 @@ Five roles, each seeing only its own data; every rule is enforced in the databas
 
 ## Functional requirements
 
-Six modules, each with numbered requirements. All are MVP unless marked **Later**.
+Eight modules, each with numbered requirements. All are MVP unless marked **Later**.
 
 ### 1. Student application portal
 
@@ -184,6 +184,53 @@ donor-documents/
 
 **ADM-10 · Donor file page.** One page per donor showing their profile, donor number, gift history by year, and every receipt and acknowledgment in their folder, with a **Download all (ZIP)** button for audits and donor requests.
 
+### 7. Partner school portal
+
+Schools register themselves, sign TENNISSA's MOU and connect a verified bank account through third-party services, so TENNISSA never handles a school's bank numbers or a paper signature.
+
+| ID | Requirement |
+| --- | --- |
+| SCH-1 | **Create account.** A school registers from TENNISSA's "Become a partner school" page or an emailed invitation; the first user becomes the school administrator; MFA required; the administrator can invite a second user (e.g. business office) |
+| SCH-2 | **School profile.** Legal name, name families know, EIN, TDOE school category and ID, accreditation, physical address and county, grades served, enrollment, head of school, finance contact, website, non-discrimination statement on file |
+| SCH-3 | **Tuition schedule** per school year: tuition and mandatory fees by grade, so awards can be capped at actual cost |
+| SCH-4 | **Accept the MOU.** TENNISSA's partner MOU is sent through Dropbox Sign to the school's authorized signer; the executed PDF and signature audit trail are saved to the school's folder; the MOU version is recorded, and a new version or a new school year triggers re-signing |
+| SCH-5 | **Bank account for disbursement.** The school completes Stripe Connect onboarding (hosted by Stripe): Stripe verifies the school's identity and EIN, screens it, and verifies the bank account. The app stores only the Stripe account ID and the last four digits |
+| SCH-6 | **Bank change hold.** When Stripe reports a new or changed bank account, payments to that school are held until a TENNISSA administrator confirms the change by calling the school at a number already on file, and records how it was confirmed |
+| SCH-7 | **Approval.** Status: Registered → Under review → Approved → Suspended. An administrator approves only when the checklist is complete: on the TDOE list, MOU signed, Stripe payouts enabled, tuition entered |
+| SCH-8 | **Enrollment verification.** The school sees applicants who named it and confirms enrollment and tuition with one click, or declines with a reason; it never sees household income or documents |
+| SCH-9 | **Students by school year.** A tab per school year lists each awarded student: name, grade, award amount, amount disbursed, each disbursement date, remaining balance and status, with year totals and CSV export |
+| SCH-10 | **Payments received.** Every payment with its date, amount, Stripe transfer reference, the students it covers and their amounts, and status (Sent, Paid, Returned); downloadable remittance advice (PDF and CSV) to match the school's bank statement |
+| SCH-11 | **Withdrawals and refunds.** The school reports a student who withdraws; the app calculates the unused amount owed back under the MOU and tracks the refund until received |
+
+Changes to module 4: schools come from this portal instead of DIS-1's manual list, and DIS-2's default payment method becomes a Stripe transfer to the school's connected account, with check as the fallback. The disbursement record keeps the Stripe transfer ID as its reference.
+
+### 8. Books and examiner view
+
+QuickBooks Online is the official general ledger and the place bank reconciliation happens; the app writes every money event to it as a balanced journal entry and keeps an identical, append-only copy so an examiner can trace any number back to its source.
+
+| ID | Requirement |
+| --- | --- |
+| BK-1 | **Chart of accounts by fund.** Two funds kept apart in both the app and QuickBooks (as classes): the §25F scholarship fund and the operating fund. Accounts include §25F bank, operating bank, Stripe clearing, contributions received, Stripe fees, scholarships paid, school refunds receivable, operating expenses |
+| BK-2 | **Double-entry journal.** Every money event creates one journal entry whose debits equal credits (enforced by a database check): gift settled, Stripe fee, ACH return or dispute, Stripe payout to the bank, transfer to a school, school refund, expense. Entries are append-only; a mistake is fixed by a reversing entry with a reason |
+| BK-3 | **Post to QuickBooks.** Each entry is posted to QuickBooks Online through its API with the app's entry ID in the memo; the app shows Posted, Pending or Failed with retry, and a nightly check confirms app and QuickBooks balances agree by account and class |
+| BK-4 | **Stripe reconciliation (automatic).** Daily, the app matches each Stripe payout and transfer to the gifts, fees and school payments inside it, using Stripe's balance transaction data; anything unmatched is listed for an administrator |
+| BK-5 | **Bank reconciliation.** QuickBooks bank feeds pull both bank accounts; each Stripe payout lands as one deposit that matches the app's payout entry. TENNISSA's bookkeeper reconciles each account monthly in QuickBooks; the app shows each month as Reconciled, In progress or Not started, with the statement balance and who signed off |
+| BK-6 | **Period close.** After reconciliation an administrator closes the month: the app blocks back-dated entries and sets the QuickBooks closing date with a password |
+| BK-7 | **Reports.** From QuickBooks: statement of financial position and statement of activities by fund. From the app: donations by period, scholarships by school and school year, students and schools served, expenses by category, and annual report data for the IRS SGO portal and the State of Tennessee; each as CSV and PDF |
+| BK-8 | **90% ratio.** Per tax year: scholarships paid to schools (net of refunds) ÷ §25F income received (net of returns), shown against the 90% target, with the dollar amount still to be paid out to reach it and a warning when the year is behind pace. The exact formula and timing rule are settings, confirmed with TENNISSA's CPA once the regulations are final |
+| BK-9 | **Examiner view.** The Auditor role gains a Books area: trial balance, journal, reconciliation status, 90% workpaper and reports for any closed period. Each entry opens its full trail (gift → Stripe ID → receipt PDF, or disbursement → award → application → school MOU). Read-only, time-limited, every view and export logged |
+| BK-10 | **Audit package.** One click builds a ZIP for a fiscal year: journal and postings, trial balance, donations, acknowledgments, awards, disbursements, school list with MOUs, reconciliations, 90% workpaper, and QuickBooks financial statements |
+| BK-11 | **Examiner access in QuickBooks.** The outside CPA is invited as an Accountant user in QuickBooks, the standard way auditors work, alongside the app's Auditor login |
+
+**Example posting rules**
+
+| Event | Debit | Credit |
+| --- | --- | --- |
+| $1,700 §25F gift settles, $5 Stripe fee | Stripe clearing $1,695; Stripe fees $5 | Contributions received, §25F $1,700 |
+| Stripe pays out to §25F bank | §25F bank | Stripe clearing |
+| $3,000 transfer to a school | Scholarships paid, §25F | Stripe clearing |
+| ACH gift returned | Contributions received, §25F | Stripe clearing |
+
 ## Recommended technology stack and architecture
 
 One Next.js web app on Vercel, backed by Supabase for data, login and files; Stripe, Resend and QuickBooks connect at the edges. Nothing to patch, no servers, one bill per service.
@@ -194,25 +241,44 @@ Every request passes through the app's role check and the database's row-level s
 
 | Layer | Choice | Why it fits TENNISSA | Alternative |
 | --- | --- | --- | --- |
-| Web app | Next.js + TypeScript, Tailwind CSS | One codebase for all four portals; mobile-friendly; large hiring pool | Remix |
+| Web app | Next.js + TypeScript, Tailwind CSS | One codebase for all five portals; mobile-friendly; large hiring pool | Remix |
 | Hosting | Vercel Pro | Serverless, automatic HTTPS and deploys, no servers | Netlify |
 | Database | Supabase Postgres | Relational data fits awards, schools and payments; row-level security; SQL reports | Firebase (weaker for financial reporting joins) |
 | Authentication | Supabase Auth | Email login, password reset, magic links, MFA, roles tied to database rules | Clerk |
 | File storage | Supabase Storage (private buckets) | Same security rules as the database; signed links | AWS S3 |
 | Payments | Stripe ACH Direct Debit + Financial Connections | Bank data stays at Stripe; settlement webhooks drive receipts | None needed |
+| School payouts | Stripe Connect, Express accounts | Stripe verifies each school and its bank account and sends the money; TENNISSA never holds school bank numbers | Plaid bank verification + ACH from TENNISSA's bank |
+| E-signature | Dropbox Sign API | Binding MOU signatures with an audit trail; webhook saves the executed PDF | DocuSign |
 | Email | Resend | Simple API, verified sending domain, delivery logs | Postmark |
 | PDF receipts | React-PDF in the app | No extra service or cost | PDF service API |
 | Scheduled jobs | Vercel Cron | Year-end acknowledgments, exports, reminders | Supabase scheduled functions |
 | Error alerts | Sentry | Free tier covers the MVP | Vercel logs only |
-| Accounting | QuickBooks Online (existing) | CSV import now, API sync later | — |
+| Accounting | QuickBooks Online (existing) | Official general ledger: the app posts journal entries through the API; bank feeds, reconciliation, statements and CPA access | — |
 
 **Why Supabase over Firebase:** scholarship data is relational (a disbursement belongs to an award, a student, a school and a fund), and the dashboard is mostly sums across those links. Postgres handles that in plain SQL; Firebase's document model makes those reports harder and costlier to build.
 
 **Modular by design:** each module is its own folder and set of tables, so later features (school portal, automated payouts, QuickBooks API sync, IRS transcript checks) are added beside the MVP rather than rebuilt into it.
 
+### Third-party services for compliance
+
+Each regulated or audit-sensitive job goes to a vendor that already carries that duty, so TENNISSA's own code holds no bank numbers, no signatures and no official ledger.
+
+| Duty | Service | What the vendor takes on | Cost |
+| --- | --- | --- | --- |
+| Donor bank payments | Stripe ACH Direct Debit (existing) | Bank verification, ACH mandate, bank data storage, returns | 0.8%, capped at $5 per gift |
+| School identity, bank account and payouts | Stripe Connect (Express accounts) | Business verification and EIN check, sanctions screening, bank verification, payouts, bank-change notices | $2 per school per month with a payout; 0.25% + 25¢ per payout; 0.25% of payout volume ([Stripe Connect pricing](https://stripe.com/connect/pricing)) |
+| MOU signature | Dropbox Sign API | Legally binding e-signature with a signer audit trail and executed PDF | Essentials $75 a month or $900 a year, from 50 requests a month ([Dropbox Sign API pricing](https://sign.dropbox.com/products/dropbox-sign-api/pricing)) |
+| General ledger, bank reconciliation, financial statements, auditor access | QuickBooks Online (existing) + its API | Official books, bank feeds, reconciliation, closing-date lock, Accountant user access | Existing plan; API writes are free and reads are free up to 500,000 calls a month ([Apideck on Intuit API pricing](https://www.apideck.com/blog/quickbooks-api-pricing-and-the-intuit-app-partner-program)) |
+| W-9, TIN match and 1099s for tutors or other vendors (Later) | Avalara 1099 & W-9 | W-9 collection, IRS TIN matching, 1099 e-filing | TIN match $0.45; e-file $3.10 a form for the first 15 ([Avalara pricing](https://www.avalara.com/us/en/products/1099/pricing.html)) |
+| Login, MFA, encrypted storage, backups | Supabase (existing) | Infrastructure security and encryption at rest | In the existing plan |
+
+**Trade-off on school payouts.** Paying schools through Stripe Connect costs about 0.5% of what is paid out (about $75 on a $15,000 payment), against a few dollars for an ACH sent from TENNISSA's bank. What the fee buys is verified school bank accounts, automatic remittance references and no bank numbers in TENNISSA's hands. If the cost is too high, the fallback is to verify school bank accounts with Plaid and keep paying from the §25F bank as module 4 does today.
+
+**Check with counsel.** With Stripe Connect, §25F money waits in TENNISSA's Stripe balance before it reaches schools. Confirm that a Stripe account used only for §25F gifts meets the separate-account rule; if not, use one Stripe account for §25F gifts and another for general gifts, or the bank fallback above.
+
 ## Database design and relationships
 
-Seventeen tables in Supabase Postgres (13 drawn below, plus helpers and `profiles` and `audit_log`); the award is the hinge that ties a student's application to a school, a fund and the payments made.
+Twenty-six tables in Supabase Postgres (13 drawn below, plus helpers and `profiles` and `audit_log`); the award is the hinge that ties a student's application to a school, a fund and the payments made.
 
 &#91;embedded content: data model · 13 core tables, 3 groups\]
 
@@ -228,7 +294,7 @@ A disbursement always points to its award, school and fund, so awarded vs. disbu
 | reviewer\_assignments | reviewer, application, assigned date, conflict declared | Links reviewers to the applications they may see |
 | reviews | score, comments, recommendation, recommended amount, submitted date | Belongs to an application and a reviewer |
 | awards | amount, status, approver, approved date, reason if modified, school year | One per approved application; belongs to a student, a school and a fund; has many disbursements |
-| schools | name, EIN, address, contact, remittance details, active | Has many awards and disbursements |
+| schools | name, EIN, address, contact, status (registered, under review, approved, suspended), TDOE ID, Stripe Connect account ID, payouts enabled, bank last four, bank change pending | Has many awards and disbursements |
 | disbursements | amount, term, method, reference, planned/paid date, status, approved by | Belongs to an award, a school and a fund |
 | donors | donor number, name, address, email, spouse link, account owner (the login that manages this donor) | Belongs to a donor profile; has many donations |
 | donations | amount, §25F designation, Stripe PaymentIntent ID, status, settled date, Stripe fee | Belongs to a donor and a fund; has acknowledgments |
@@ -237,6 +303,15 @@ A disbursement always points to its award, school and fund, so awarded vs. disbu
 | expenses | category, amount, date, vendor, reference, fund | Belongs to the operating fund |
 | income\_limits | county, household size, 300% limit, year | Read by the eligibility check |
 | audit\_log | actor, action, table, record, before, after, time | Written by database triggers; read-only |
+| school\_agreements | MOU version, school year, Dropbox Sign request ID, signer, signed date, executed PDF path | Belongs to a school |
+| tuition\_schedules | school year, grade, tuition, mandatory fees | Belongs to a school; caps awards |
+| enrollment\_verifications | result (confirmed, declined), reason, tuition confirmed, school user, date | Belongs to an application and a school |
+| school\_refunds | student withdrawal date, amount owed, due date, received date, status | Belongs to an award and a school |
+| ledger\_accounts | code, name, type (asset, liability, income, expense, net assets), fund, QuickBooks account ID | Belongs to a fund; has many journal lines |
+| journal\_entries | date, kind (gift settled, fee, return, payout, transfer, refund, expense, reversal), source record, reverses, QuickBooks ID, sync status | Has two or more journal lines; append-only |
+| journal\_lines | account, debit, credit, fund | Belongs to a journal entry; debits equal credits per entry |
+| reconciliations | account, month, statement balance, book balance, unmatched items, status, signed off by | Belongs to a bank or Stripe clearing account |
+| period\_closes | month, closed by, closed date, reopened by, reason | Blocks back-dated journal entries |
 
 **Totals the dashboard computes**
 
@@ -280,7 +355,7 @@ The cloud providers secure the infrastructure; TENNISSA still owns who gets acce
 
 ## Stripe ACH and QuickBooks integration
 
-Stripe tells the app when an ACH gift settles; the app issues the acknowledgment only then. QuickBooks gets monthly exports in v1 and a direct sync later.
+Stripe tells the app when an ACH gift settles; the app issues the acknowledgment only then. Stripe Connect sends each school payment; QuickBooks receives every money event as a journal entry from day one.
 
 ### Stripe ACH donation flow
 
@@ -299,19 +374,27 @@ Stripe tells the app when an ACH gift settles; the app issues the acknowledgment
 - Webhooks are verified with Stripe's signing secret and processed once per event ID, so a repeated webhook never creates a second receipt.
 - Stripe's bank-verification and ACH mandate screens handle authorization; TENNISSA's app never sees full account numbers.
 
+### Stripe Connect school payment flow
+
+1. The school finishes Stripe's hosted onboarding; Stripe verifies the school, its EIN and its bank account and sends `account.updated` with payouts enabled.
+2. An administrator approves a batch of disbursements; amounts over the set limit need a second administrator.
+3. The app creates one Stripe transfer per school with the disbursement IDs in its metadata, records it as **Sent** and posts the journal entry.
+4. Stripe pays the school's bank; the app marks the payment **Paid** and emails remittance advice listing each student.
+5. A returned payout or a bank-account change from Stripe puts the school on hold until an administrator confirms it.
+
 ### QuickBooks approach
 
 | Option | What it does | When |
 | --- | --- | --- |
-| CSV export (MVP) | Monthly files in QuickBooks Online import format: donations (deposits by settlement date, net of Stripe fees), disbursements (payments to schools), and expenses recorded in the app | Launch |
-| Stripe-to-QuickBooks sync app | Third-party connector posts Stripe payouts and fees to QuickBooks automatically | If month-end reconciliation takes more than a few hours |
-| QuickBooks Online API sync | App posts journal entries for donations, awards and disbursements directly, with the scholarship fund and operating fund kept apart | Phase 2, once volumes justify it |
+| QuickBooks Online API sync (MVP) | App posts a balanced journal entry for every gift, fee, return, payout, school transfer, refund and expense, tagged by fund (class); nightly balance check | Launch |
+| QuickBooks bank feeds and reconciliation (MVP) | QuickBooks pulls the §25F and operating bank accounts; the bookkeeper reconciles monthly and sets the closing date | Launch |
+| CSV export | The same entries as a QuickBooks import file, as a backup if the API is unavailable | Launch |
 
 In QuickBooks, track the §25F scholarship fund and operating funds separately (classes or separate bank accounts) so the books match the app's 90/10 numbers. QuickBooks stays the system of record for the general ledger; the app is the system of record for donors, awards and disbursements.
 
 ## Implementation phases and timeline
 
-Four phases over about eight months, each usable on its own: donations first because January 1, 2027 is the only fixed deadline, then the scholarship cycle in the order TENNISSA will run it.
+Four phases over about nine months, each usable on its own: donations first because January 1, 2027 is the only fixed deadline, then the scholarship cycle in the order TENNISSA will run it.
 
 &#91;embedded content: MVP roadmap · 4 phases, 4 gates\]
 
@@ -321,16 +404,16 @@ Phase 1 has seven weeks, so it holds only what donors need on day one; the final
 | --- | --- | --- | --- |
 | 1 · Donations live | 7 | 7–8 | A test donor gives by ACH, sees Pending, then gets the PDF acknowledgment by email after settlement |
 | 2 · Apply, review | 8 | 7–8 | A family submits a full application with documents; an assigned reviewer recommends an amount |
-| 3 · Award and pay | 8 | 6–7 | Admin approves an award, records a school payment, and the student balance updates |
-| 4 · Report, harden | 9 | 5–6 | Dashboard totals match QuickBooks for a test month; backup restore and access review completed |
+| 3 · Schools, award and pay | 11 | 9–11 | A school registers, signs the MOU in Dropbox Sign and connects its bank through Stripe; it verifies a student; the admin approves the award and a Stripe transfer appears under the school's Payments received |
+| 4 · Books, report, harden | 10 | 8–10 | Journal entries since January 1 are posted to QuickBooks and balances agree; one month is reconciled and closed; the 90% tracker is right; an examiner login downloads the audit package; backup restore and access review completed |
 
-**Team:** one experienced full-stack developer (Next.js and Supabase) full time, plus about 10% of a designer for screens and receipts and a TENNISSA staff member for testing each phase. Total about **25–29 developer-weeks**. A contractor at $75–$125 an hour would put the build at roughly $75,000–$145,000; a volunteer or in-house developer changes that, not the stack.
+**Team:** one experienced full-stack developer (Next.js and Supabase) full time, plus about 10% of a designer for screens and receipts and a TENNISSA staff member for testing each phase. Total about **31–37 developer-weeks**. A contractor at $75–$125 an hour would put the build at roughly $93,000–$185,000; a volunteer or in-house developer changes that, not the stack.
 
-**After the MVP (phase 2 platform):** school self-service portal, QuickBooks Online API sync, automated school payouts, Spanish, IRS transcript checks, and the year-end acknowledgment and IRS export run for the first time in January–February 2028.
+**After the MVP (phase 2 platform):** vendor payments for tutoring with W-9 and 1099s through Avalara, Spanish, IRS transcript checks, and the year-end acknowledgment and IRS export run for the first time in January–February 2028.
 
 ## Estimated monthly costs
 
-Fixed platform costs run about **$45–$80 a month**; Stripe adds a few dollars per donation. Prices are list prices checked October 2026; confirm before signing up.
+Fixed platform costs run about **$120–$155 a month**; Stripe adds a few dollars per donation. Prices are list prices checked October 2026; confirm before signing up.
 
 | Service | Plan | Monthly cost | Notes |
 | --- | --- | --- | --- |
@@ -341,7 +424,8 @@ Fixed platform costs run about **$45–$80 a month**; Stripe adds a few dollars 
 | PDF generation | Open-source library in the app | $0 | No separate service |
 | QuickBooks Online | TENNISSA's existing plan | $0 added | Class tracking may need a higher QuickBooks tier |
 | Domain and DNS | Existing or new | \~$2 | About $20–$25 a year |
-| **Total fixed** |  | **\~$45–$80** | Plus usage overages if volumes grow well beyond the MVP |
+| Dropbox Sign (MOU signatures) | API Essentials | $75 | $900 a year paid annually; from 50 signature requests a month; free test mode for development |
+| **Total fixed** |  | **\~$120–$155** | Plus usage overages if volumes grow well beyond the MVP |
 
 **Stripe per-donation fees (no monthly fee)**
 
@@ -351,8 +435,10 @@ Fixed platform costs run about **$45–$80 a month**; Stripe adds a few dollars 
 | Instant bank verification (Financial Connections) | $1.50 per verification |
 | Failed ACH payment | $4 |
 | Disputed ACH payment | $15 |
+| Connect: school paid in a month | $2 per school |
+| Connect: each payout to a school | 0.25% + 25¢, plus 0.25% of payout volume |
 
-A $1,700 gift costs $5 plus a one-time $1.50 bank verification for a new donor ([Stripe ACH fees](https://superdupr.com/blog/ach-fees)).
+A $1,700 gift costs $5 plus a one-time $1.50 bank verification for a new donor; a $15,000 payment to a school costs about $75 plus $2 for that month ([Stripe ACH fees](https://superdupr.com/blog/ach-fees)).
 
 **Not included:** development labor (see the timeline), legal review of donor disclosures, and the annual §25F audit, which are TENNISSA's separate budget lines.
 
@@ -366,6 +452,8 @@ A $1,700 gift costs $5 plus a one-time $1.50 bank verification for a new donor (
 | Income documents contain SSNs and sensitive data | Privacy exposure | Ask families to redact SSNs; private storage, signed links, MFA for reviewers, retention schedule |
 | One developer or contractor holds all knowledge | Stalled support | TENNISSA owns every account; code in a TENNISSA GitHub organization; a short runbook in the repo |
 | §25F rules change when regulations are finalized | Feature changes | Keep limits (300%, $1,700, 90%) in a settings table, not hard-coded |
+| §25F money held in a Stripe balance may not count as a separate account | Commingling finding in the annual audit | Counsel confirms before Phase 3; fallback is paying schools by ACH from the §25F bank with Plaid-verified school accounts |
+| App journal and QuickBooks drift apart | Reports disagree with the books | Nightly balance check by account and class; bookkeeper edits in QuickBooks only through reversing entries; closing date locked after reconciliation |
 
 **Open questions**
 
@@ -377,6 +465,9 @@ A $1,700 gift costs $5 plus a one-time $1.50 bank verification for a new donor (
 - [ ] Which QuickBooks Online plan does TENNISSA use, and does it have class tracking?
 - [ ] Should the donor portal also accept non-§25F general gifts, or §25F gifts only? (General gifts would need a separate bank account and receipt wording.)
 - [ ] Can a gift from a joint bank account be designated as one spouse's gift, or split between spouses? The proposed rules treat spouses as separate taxpayers but don't address joint accounts; until counsel confirms, "split between us" stays off and each spouse gives from their own bank account or chooses with a short disclosure.
+- [ ] Does a Stripe account used only for §25F gifts meet the separate-account rule, so schools can be paid by Stripe Connect transfer?
+- [ ] Is about 0.5% of each school payment through Stripe Connect acceptable, or should schools be paid by ACH from the §25F bank?
+- [ ] What must the partner school MOU say, and who at a school is authorized to sign it?
 
 **Sources**
 
@@ -388,5 +479,9 @@ A $1,700 gift costs $5 plus a one-time $1.50 bank verification for a new donor (
 - [CloudZero: Supabase pricing](https://www.cloudzero.com/blog/supabase-pricing/)
 - [DEV: Vercel pricing 2026](https://dev.to/nayankyada/vercel-pricing-2026-what-you-actually-pay-for-a-real-nextjs-project-33md)
 - [Superdupr: Resend pricing 2026](https://superdupr.com/blog/resend-pricing)
+- [Stripe: Connect pricing](https://stripe.com/connect/pricing)
+- [Dropbox Sign: API pricing](https://sign.dropbox.com/products/dropbox-sign-api/pricing)
+- [Apideck: QuickBooks API pricing and the Intuit App Partner Program](https://www.apideck.com/blog/quickbooks-api-pricing-and-the-intuit-app-partner-program)
+- [Avalara: 1099 & W-9 pricing](https://www.avalara.com/us/en/products/1099/pricing.html)
 
 Not tax or legal advice; confirm §25F requirements with TENNISSA's tax counsel.
